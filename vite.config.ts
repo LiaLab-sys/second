@@ -44,6 +44,9 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    base: process.env.NEXT_PUBLIC_BASE_PATH
+      ? `${process.env.NEXT_PUBLIC_BASE_PATH}/`
+      : "/",
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,

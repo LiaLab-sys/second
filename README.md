@@ -94,6 +94,17 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 - `npm test`: build the starter and verify its rendered loading skeleton
 - `npm run db:generate`: generate Drizzle migrations after schema changes
 
+## GitHub Pages
+
+This project produces a static export in `dist/client`. The workflow at
+`.github/workflows/deploy-pages.yml` builds and publishes that directory when
+changes are pushed to `main`.
+
+After pushing the repository to GitHub, open **Settings → Pages** and set
+**Source** to **GitHub Actions**. The workflow automatically handles both
+project sites (`owner.github.io/repository`) and account sites
+(`owner.github.io`).
+
 ## Learn More
 
 - [vinext Documentation](https://github.com/cloudflare/vinext)
