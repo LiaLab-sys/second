@@ -5,6 +5,8 @@ and reflecting on meaningful conversations.
 
 **Live demo:** [https://lialab-sys.github.io/second/](https://lialab-sys.github.io/second/)
 
+Updates pushed to `main` are automatically published through GitHub Pages.
+
 ## Technical Foundation
 
 A clean full-stack starter running on
