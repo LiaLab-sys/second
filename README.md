@@ -1,4 +1,11 @@
-# vinext-starter
+# Second
+
+Second is a lightweight conversation-memory prototype for preparing, guiding,
+and reflecting on meaningful conversations.
+
+**Live demo:** [https://lialab-sys.github.io/second/](https://lialab-sys.github.io/second/)
+
+## Technical Foundation
 
 A clean full-stack starter running on
 [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
