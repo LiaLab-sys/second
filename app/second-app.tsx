@@ -27,6 +27,8 @@ type MemoryPerson = {
   status: string;
   discussed: string;
   matters: string;
+  opportunity: string;
+  peopleMentioned: string;
   followup: string;
   next: string;
 };
@@ -66,6 +68,8 @@ const people = {
     status: "Connect this week",
     discussed: "How manufacturing companies connect Maximo with older ERP systems, and why integration work is often harder than the AI layer itself.",
     matters: "Works mainly with manufacturing clients. Interested in practical predictive maintenance, but careful about security and data quality. His team sometimes works directly inside client systems.",
+    opportunity: "Learn which early predictive-maintenance projects are producing measurable value.",
+    peopleMentioned: "Sarah in the Zürich team",
     followup: "Connect on LinkedIn and ask for an introduction to Sarah in the Zürich team.",
     next: "Are clients getting measurable value from predictive maintenance yet?",
   },
@@ -81,6 +85,8 @@ const people = {
     status: "Follow up in September",
     discussed: "Moving from prototype demos to reliable AI workflows inside regulated companies.",
     matters: "Building a small applied AI team. Values people who can translate between operators and technical teams.",
+    opportunity: "Reconnect after the product launch and compare notes on evaluation design.",
+    peopleMentioned: "Her applied AI team",
     followup: "Send the article on evaluation design after her team’s product launch.",
     next: "What changed once you had a few customer deployments running?",
   },
@@ -96,6 +102,8 @@ const people = {
     status: "No action needed",
     discussed: "Why cloud migration plans get stuck when ownership is fragmented across business units.",
     matters: "Works across Switzerland and Northern Italy. Focused on manufacturing and security governance.",
+    opportunity: "A useful person to ask about cloud-governance questions in manufacturing.",
+    peopleMentioned: "No one captured",
     followup: "Nothing promised. Keep him in mind for future cloud-governance questions.",
     next: "Are AI projects changing who owns cloud decisions on the client side?",
   },
@@ -194,6 +202,7 @@ export default function Home() {
   const [wrapStructured, setWrapStructured] = useState(false);
   const [wrapNotes, setWrapNotes] = useState("");
   const [memorySaved, setMemorySaved] = useState(false);
+  const [memoryPeople, setMemoryPeople] = useState<MemoryPerson[]>([people.alex, people.sarah, people.daniel]);
   const [selectedPerson, setSelectedPerson] = useState<MemoryPerson>(people.alex);
 
   const activeArea = screen === "live" || screen === "wrap" ? "live" : screen === "memory" || screen === "person" ? "memory" : "prep";
@@ -212,6 +221,8 @@ export default function Home() {
       status: "Follow up",
       discussed: wrapNotes || profile.known || "A first conversation worth remembering.",
       matters: profile.known || "Keep building context around their day-to-day work and current priorities.",
+      opportunity: profile.goal ? `Keep exploring the conversation around ${profile.goal.toLowerCase()}.` : "No opportunity captured yet.",
+      peopleMentioned: "No one captured",
       followup: `Follow up with ${profile.name || "them"} while the conversation is still fresh.`,
       next: "Has much changed since we last spoke?",
     };
@@ -240,6 +251,30 @@ export default function Home() {
     go("prep");
   };
 
+  const saveCurrentMemory = () => {
+    setMemoryPeople((current) => {
+      const withoutCurrent = current.filter((person) => person.id !== currentMemoryPerson.id);
+      const withoutDuplicateExample = currentMemoryPerson.name === people.alex.name
+        ? withoutCurrent.filter((person) => person.id !== people.alex.id)
+        : withoutCurrent;
+      return [currentMemoryPerson, ...withoutDuplicateExample];
+    });
+    setMemorySaved(true);
+    setSelectedPerson(currentMemoryPerson);
+    go("memory");
+  };
+
+  const savePersonChanges = (updatedPerson: MemoryPerson) => {
+    setMemoryPeople((current) => current.map((person) => person.id === updatedPerson.id ? updatedPerson : person));
+    setSelectedPerson(updatedPerson);
+  };
+
+  const deletePerson = (personId: string) => {
+    setMemoryPeople((current) => current.filter((person) => person.id !== personId));
+    if (personId === currentMemoryPerson.id) setMemorySaved(false);
+    go("memory");
+  };
+
   return (
     <main className={`site-shell screen-${screen}`}>
       <header className="topbar">
@@ -255,9 +290,9 @@ export default function Home() {
       {screen === "home" && <HomeScreen onSubmit={startConversation} />}
       {screen === "prep" && <PrepScreen profile={profile} openTerm={openTerm} setOpenTerm={setOpenTerm} onLive={() => go("live")} />}
       {screen === "live" && <LiveScreen text={liveText} setText={setLiveText} answered={liveAnswered} onAnswer={() => { setLiveAnswered(true); setQuestionIndex(0); }} questionIndex={questionIndex} onAnother={() => setQuestionIndex((current) => current + 1)} insightSaved={insightSaved} setInsightSaved={setInsightSaved} profile={profile} onWrap={() => go("wrap")} />}
-      {screen === "wrap" && <WrapScreen profile={profile} notes={wrapNotes} setNotes={setWrapNotes} structured={wrapStructured} onStructure={() => setWrapStructured(true)} onSave={() => { setMemorySaved(true); setSelectedPerson(currentMemoryPerson); go("memory"); }} />}
-      {screen === "memory" && <MemoryScreen saved={memorySaved} currentPerson={currentMemoryPerson} openPerson={(person) => { setSelectedPerson(person); go("person"); }} />}
-      {screen === "person" && <PersonScreen person={selectedPerson} onBack={() => go("memory")} />}
+      {screen === "wrap" && <WrapScreen profile={profile} notes={wrapNotes} setNotes={setWrapNotes} structured={wrapStructured} onStructure={() => setWrapStructured(true)} onSave={saveCurrentMemory} />}
+      {screen === "memory" && <MemoryScreen people={memoryPeople} saved={memorySaved} currentPerson={memoryPeople.find((person) => person.id === currentMemoryPerson.id) ?? currentMemoryPerson} openPerson={(person) => { setSelectedPerson(person); go("person"); }} />}
+      {screen === "person" && <PersonScreen person={selectedPerson} onBack={() => go("memory")} onSave={savePersonChanges} onDelete={deletePerson} />}
     </main>
   );
 }
@@ -379,26 +414,82 @@ function WrapScreen({ profile, notes, setNotes, structured, onStructure, onSave 
   );
 }
 
-function MemoryScreen({ saved, currentPerson, openPerson }: { saved: boolean; currentPerson: MemoryPerson; openPerson: (person: MemoryPerson) => void }) {
-  const list: MemoryPerson[] = saved ? (currentPerson.name === people.alex.name ? [currentPerson, people.sarah, people.daniel] : [currentPerson, people.alex, people.sarah, people.daniel]) : [people.alex, people.sarah, people.daniel];
+function MemoryScreen({ people: list, saved, currentPerson, openPerson }: { people: MemoryPerson[]; saved: boolean; currentPerson: MemoryPerson; openPerson: (person: MemoryPerson) => void }) {
   return (
     <section className="memory-page page">
       <div className="memory-heading"><div className="eyebrow"><span>05</span> Relationship memory</div><div><h1>People worth<br />remembering.</h1><p>Context for the conversations that matter—not a pipeline.</p></div></div>
       {saved && <div className="save-notice"><span>✓</span><p><b>Conversation saved.</b> {currentPerson.name} has been added to Memory.</p><button onClick={() => openPerson(currentPerson)} type="button">View memory →</button></div>}
       <div className="memory-tools"><span>{list.length} people</span><label><span className="sr-only">Search memory</span><input placeholder="Search people, companies or topics" /><i>⌕</i></label></div>
-      <div className="people-list">{list.map((person, index) => <button className="person-row" key={`${person.id}-${person.name}`} onClick={() => openPerson(person)} type="button"><span className="row-number">{String(index + 1).padStart(2, "0")}</span><span className="avatar">{person.initials}</span><span className="person-main"><b>{person.name}</b><small>{person.role} · {person.company}</small></span><span className="person-met"><small>Met at</small>{person.met}</span><span className="person-date"><small>Last spoke</small>{person.date}</span><span className="row-arrow">→</span></button>)}</div>
-      <div className="topic-strip"><span>Across your recent conversations</span><div><b>Enterprise AI</b><b>Manufacturing</b><b>Security</b><b>Cloud</b></div></div>
+      {list.length > 0 ? <div className="people-list">{list.map((person, index) => <button className="person-row" key={person.id} onClick={() => openPerson(person)} type="button"><span className="row-number">{String(index + 1).padStart(2, "0")}</span><span className="avatar">{person.initials}</span><span className="person-main"><b>{person.name}</b><small>{person.role} · {person.company}</small></span><span className="person-met"><small>Met at</small>{person.met}</span><span className="person-date"><small>Last spoke</small>{person.date}</span><span className="row-arrow">→</span></button>)}</div> : <div className="empty-memory"><Mark compact /><h2>No saved people yet.</h2><p>Your next saved conversation will appear here.</p></div>}
+      {list.length > 0 && <div className="topic-strip"><span>Across your recent conversations</span><div>{Array.from(new Set(list.flatMap((person) => person.topics))).slice(0, 6).map((topic) => <b key={topic}>{topic}</b>)}</div></div>}
     </section>
   );
 }
 
-function PersonScreen({ person, onBack }: { person: MemoryPerson; onBack: () => void }) {
+function PersonScreen({ person, onBack, onSave, onDelete }: { person: MemoryPerson; onBack: () => void; onSave: (person: MemoryPerson) => void; onDelete: (personId: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [draft, setDraft] = useState(person);
+  const [topics, setTopics] = useState(person.topics.join(", "));
+
+  const update = (field: keyof MemoryPerson, value: string) => setDraft((current) => ({ ...current, [field]: value }));
+  const beginEdit = () => {
+    setDraft(person);
+    setTopics(person.topics.join(", "));
+    setEditing(true);
+  };
+  const cancelEdit = () => {
+    setDraft(person);
+    setTopics(person.topics.join(", "));
+    setEditing(false);
+  };
+  const save = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = draft.name.trim() || "Unnamed person";
+    const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
+    const updatedPerson = {
+      ...draft,
+      name,
+      initials,
+      topics: topics.split(",").map((topic) => topic.trim()).filter(Boolean),
+    };
+    onSave(updatedPerson);
+    setDraft(updatedPerson);
+    setEditing(false);
+  };
+
   return (
     <section className="person-page page">
       <button className="back-link" onClick={onBack} type="button">← All people</button>
-      <div className="person-hero"><div className="large-avatar">{person.initials}</div><div><h1>{person.name}</h1><p>{person.role} · {person.company}</p></div><button className="outline-button" type="button">Start a new conversation →</button></div>
-      <div className="person-context"><span>Met at <b>{person.met}</b></span><span>Last spoke <b>{person.date}</b></span><span>Status <b className="status-dot">{person.status}</b></span></div>
-      <div className="relationship-grid"><article><span>01 / Last time</span><h2>What you discussed</h2><p>{person.discussed}</p><div className="tags">{person.topics.map((topic) => <b key={topic}>{topic}</b>)}</div></article><article><span>02 / What matters</span><h2>Useful context</h2><p>{person.matters}</p></article><article className="accent-article"><span>03 / Follow-up</span><h2>Keep your word</h2><p>{person.followup}</p><label><input type="checkbox" /> Mark as done</label></article><article><span>04 / Next time</span><h2>Pick up the thread</h2><blockquote>“{person.next}”</blockquote></article></div>
+      {editing ? (
+        <form className="person-edit" onSubmit={save}>
+          <div className="edit-heading"><div><span>Editing memory</span><h1>{draft.name || "Unnamed person"}</h1><p>Update only what is useful to remember.</p></div><div className="edit-actions"><button className="text-button" onClick={cancelEdit} type="button">Cancel</button><button className="primary" type="submit">Save changes <span>→</span></button></div></div>
+          <div className="edit-field-grid">
+            <label><span>Person name</span><input value={draft.name} onChange={(event) => update("name", event.target.value)} /></label>
+            <label><span>Company</span><input value={draft.company} onChange={(event) => update("company", event.target.value)} /></label>
+            <label><span>Role or title</span><input value={draft.role} onChange={(event) => update("role", event.target.value)} /></label>
+            <label><span>Where we met</span><input value={draft.met} onChange={(event) => update("met", event.target.value)} /></label>
+          </div>
+          <label className="edit-wide-field"><span>Key topics</span><input value={topics} onChange={(event) => setTopics(event.target.value)} placeholder="Separate topics with commas" /></label>
+          <div className="edit-copy-grid">
+            <label><span>Important insight</span><textarea value={draft.matters} onChange={(event) => update("matters", event.target.value)} /></label>
+            <label><span>Potential opportunity</span><textarea value={draft.opportunity} onChange={(event) => update("opportunity", event.target.value)} /></label>
+            <label><span>People mentioned</span><textarea value={draft.peopleMentioned} onChange={(event) => update("peopleMentioned", event.target.value)} /></label>
+            <label><span>Follow up action</span><textarea value={draft.followup} onChange={(event) => update("followup", event.target.value)} /></label>
+            <label><span>What to ask next time</span><textarea value={draft.next} onChange={(event) => update("next", event.target.value)} /></label>
+            <label><span>Freeform conversation notes</span><textarea value={draft.discussed} onChange={(event) => update("discussed", event.target.value)} /></label>
+          </div>
+          <div className="edit-footer"><button className="text-button" onClick={cancelEdit} type="button">Cancel</button><button className="primary" type="submit">Save changes <span>→</span></button></div>
+        </form>
+      ) : (
+        <>
+          <div className="person-hero"><div className="large-avatar">{person.initials}</div><div><h1>{person.name}</h1><p>{person.role} · {person.company}</p></div><div className="person-hero-actions"><button className="edit-button" onClick={beginEdit} type="button">Edit</button><button className="outline-button" type="button">Start a new conversation →</button></div></div>
+          <div className="person-context"><span>Met at <b>{person.met}</b></span><span>Last spoke <b>{person.date}</b></span><span>Status <b className="status-dot">{person.status}</b></span></div>
+          <div className="relationship-grid"><article><span>01 / Last time</span><h2>What you discussed</h2><p>{person.discussed}</p><div className="tags">{person.topics.map((topic) => <b key={topic}>{topic}</b>)}</div></article><article><span>02 / What matters</span><h2>Useful context</h2><p>{person.matters}</p><div className="relationship-details"><div><span>Potential opportunity</span><p>{person.opportunity}</p></div><div><span>People mentioned</span><p>{person.peopleMentioned}</p></div></div></article><article className="accent-article"><span>03 / Follow-up</span><h2>Keep your word</h2><p>{person.followup}</p><label><input type="checkbox" /> Mark as done</label></article><article><span>04 / Next time</span><h2>Pick up the thread</h2><blockquote>“{person.next}”</blockquote></article></div>
+          <div className="person-management"><div><span>Manage this memory</span><p>Remove this person and their conversation notes from this prototype session.</p></div><button onClick={() => setConfirmDelete(true)} type="button">Delete person</button></div>
+        </>
+      )}
+      {confirmDelete && <div className="confirm-backdrop"><div className="delete-confirm" role="dialog" aria-modal="true" aria-labelledby="delete-title"><span>Remove from Memory</span><h2 id="delete-title">Delete {person.name}?</h2><p>This will remove this person and their saved conversation notes from Memory.</p><div><button className="text-button" onClick={() => setConfirmDelete(false)} type="button" autoFocus>Cancel</button><button className="confirm-delete-button" onClick={() => onDelete(person.id)} type="button">Delete</button></div></div></div>}
     </section>
   );
 }
