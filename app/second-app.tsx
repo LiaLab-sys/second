@@ -180,7 +180,7 @@ function Mark({ compact = false }: { compact?: boolean }) {
 function SiteLogo() {
   return (
     <span className="site-logo" aria-hidden="true">
-      <Image className="site-logo-mark" src={`${basePath}/second-mark-orange.png`} alt="" width={44} height={44} unoptimized />
+      <Image className="site-logo-mark" src={`${basePath}/second-mark-orange.png`} alt="" width={44} height={44} priority unoptimized />
       <span className="site-logo-copy">
         <span className="site-logo-wordmark">SECOND<span>.</span></span>
         <span className="site-logo-tagline">Prep · Live · Memory</span>
