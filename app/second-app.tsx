@@ -190,16 +190,19 @@ function SiteLogo() {
 }
 
 function TermExplanation({ entry, onClose, dark = false }: { entry: TerminologyEntry; onClose?: () => void; dark?: boolean }) {
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const questions = [entry.question, ...(entry.moreQuestions ?? [])];
+  const question = questions[questionIndex % questions.length];
   return (
     <article className={`term-explanation ${dark ? "dark" : ""}`}>
       <header>
-        <div><span>{entry.source === "local" ? "Local glossary" : "Prototype fallback"}</span><h3>{entry.term}</h3></div>
+        <div><span>{entry.source === "local" ? entry.category ?? "Technical glossary" : "Prototype fallback"}</span><h3>{entry.term}</h3></div>
         {onClose && <button onClick={onClose} type="button" aria-label={`Close ${entry.term} explanation`}>Close</button>}
       </header>
       <dl>
         <div><dt>What it means</dt><dd>{entry.meaning}</dd></div>
         <div><dt>Why they might be mentioning it</dt><dd>{entry.why}</dd></div>
-        <div><dt>What you could ask</dt><dd>“{entry.question}”</dd></div>
+        <div className="term-question"><dt>What you could ask</dt><dd>“{question}”</dd>{questions.length > 1 && <button onClick={() => setQuestionIndex((current) => current + 1)} type="button">Another question →</button>}</div>
       </dl>
     </article>
   );
@@ -354,8 +357,7 @@ function PrepScreen({ profile, openTerm, setOpenTerm, onLive }: { profile: Conve
   const firstName = profile.name.split(/\s+/).filter(Boolean)[0] || "them";
   const subtitle = [profile.role, profile.company].filter(Boolean).join(" · ") || profile.event || "Context-led briefing";
   const contextText = [profile.company, profile.role, profile.event, profile.known].filter(Boolean).join(" ");
-  const defaultTermNames = /ibm|maximo/i.test(contextText) ? ["IBM Maximo", "ERP", "API", "CVE", "Predictive maintenance"] : ["Enterprise software", "API", "CRM", "SaaS", "LLM"];
-  const usefulTerms = [...findTermsInText(contextText), ...defaultTermNames.map((term) => explainTerm(term, contextText))].filter((entry, index, entries) => entries.findIndex((candidate) => candidate.term === entry.term) === index).slice(0, 5);
+  const usefulTerms = findTermsInText(contextText).slice(0, 5);
   const questions = [
     profile.role ? `So what does being a ${profile.role} involve day to day?` : "So what are you working on at the moment?",
     profile.company ? `What are you working on at ${profile.company} right now?` : "What does the work look like in practice?",
@@ -381,7 +383,7 @@ function PrepScreen({ profile, openTerm, setOpenTerm, onLive }: { profile: Conve
           <section className="brief-section" id="person"><div className="section-number">01</div><div><h2>The short version</h2><p className="big-copy">{summary} {profile.goal ? `You want to ${profile.goal.toLowerCase()}.` : "You want to understand the situation without forcing the conversation."}</p><p>{profile.known || (profile.event ? `You’re meeting in the context of ${profile.event}. Start there, then ask about what the work looks like in practice.` : "Begin with the detail you have, then listen for a concrete example you can ask about.")}</p></div></section>
           <section className="brief-section" id="know"><div className="section-number">02</div><div><h2>What to know</h2><div className="insight-list">{insights.map(([title, copy], index) => <article className="insight" key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{title}</h3><p>{copy}</p></div></article>)}</div></div></section>
           <section className="brief-section" id="questions"><div className="section-number">03</div><div><h2>Questions worth asking</h2><div className="question-list">{questions.map((question, index) => <button key={question} type="button"><span>{index + 1}</span>{question}<i>↗</i></button>)}</div><div className="followups"><h3>Smart follow-ups</h3><p>“So how does that actually work?”</p><p>“Who normally handles that on the client side?”</p><p>“Is that something clients are asking for?”</p></div></div></section>
-          <section className="brief-section terminology" id="terms"><div className="section-number">04</div><div><h2>Useful terminology</h2><p className="section-note">Tap a term for just enough context to keep following the conversation.</p><div className="term-list">{usefulTerms.map((entry) => <article className={`term ${openTerm === entry.term ? "open" : ""}`} key={entry.term}><button onClick={() => setOpenTerm(openTerm === entry.term ? null : entry.term)} type="button" aria-expanded={openTerm === entry.term}><span>{entry.term}</span><i>{openTerm === entry.term ? "−" : "+"}</i></button>{openTerm === entry.term && <TermExplanation entry={entry} />}</article>)}</div></div></section>
+          <section className="brief-section terminology" id="terms"><div className="section-number">04</div><div><h2>Useful terminology</h2><p className="section-note">Terms appear only when they are detected in the context you provided.</p>{usefulTerms.length > 0 ? <div className="term-list">{usefulTerms.map((entry) => <article className={`term ${openTerm === entry.term ? "open" : ""}`} key={entry.term}><button onClick={() => setOpenTerm(openTerm === entry.term ? null : entry.term)} type="button" aria-expanded={openTerm === entry.term}><span>{entry.term}</span><i>{openTerm === entry.term ? "−" : "+"}</i></button>{openTerm === entry.term && <TermExplanation entry={entry} />}</article>)}</div> : <p className="no-terms">No specialist terminology detected yet. Add more context and relevant terms will appear here.</p>}</div></section>
           <section className="brief-section intro-section" id="intro"><div className="section-number">05</div><div><h2>A natural introduction</h2><blockquote>“{introduction}”</blockquote><p>Then stop and let them answer.</p><button className="primary" onClick={onLive} type="button">I’m ready <span>Start Live Assist →</span></button></div></section>
         </div>
       </div>
@@ -393,10 +395,12 @@ function LiveScreen({ profile, text, setText, answered, onAnswer, questionIndex,
   const [showTermHelp, setShowTermHelp] = useState(false);
   const [termQuery, setTermQuery] = useState("");
   const [requestedTerm, setRequestedTerm] = useState("");
+  const [termIndex, setTermIndex] = useState(0);
   const response = getLiveResponse(text);
   const question = response.questions[questionIndex % response.questions.length];
   const detectedTerms = findTermsInText(text);
-  const activeTermName = requestedTerm || detectedTerms[0]?.term || "";
+  const detectedTerm = detectedTerms[termIndex % Math.max(detectedTerms.length, 1)];
+  const activeTermName = requestedTerm || detectedTerm?.term || "";
   const activeEntry = activeTermName ? explainTerm(activeTermName, text) : null;
   const personLabel = profile.name ? `Live with ${profile.name}` : "Live Assist";
   const submit = (event: FormEvent) => { event.preventDefault(); if (text.trim()) onAnswer(); };
@@ -407,7 +411,7 @@ function LiveScreen({ profile, text, setText, answered, onAnswer, questionIndex,
       <div className="live-meta"><span><i className="live-dot" /> {personLabel}</span><button onClick={onWrap} type="button">End conversation</button></div>
       <div className="live-core">
         <div className="eyebrow"><span>03</span> In the moment</div>
-        {!answered ? <form className="live-form" onSubmit={submit}><h1>What did they<br />just say?</h1><div className="live-input"><textarea value={text} onChange={(event) => setText(event.target.value)} aria-label="What they just said" placeholder="Type a rough sentence…" autoFocus /><button className="voice-button" type="button" aria-label="Use voice input"><i /></button></div><button className="primary answer-button" type="submit">Help me respond <span>→</span></button><p className="live-hint">A rough sentence is enough.</p></form> : <div className="live-answer"><div className="meaning"><span>What that means</span><p>{response.meaning}</p></div>{detectedTerms.length > 0 && <div className="live-term-picks"><span>Terms mentioned</span><div>{detectedTerms.map((entry) => <button key={entry.term} onClick={() => { setRequestedTerm(entry.term); setShowTermHelp(true); }} type="button">{entry.term}</button>)}</div></div>}<div className="ask-next"><span>Ask next</span><blockquote>“{question}”</blockquote><div className="good-topic"><span>Good topic to explore</span><p>{response.topic}</p></div></div>{showTermHelp && <div className="live-term-panel"><span className="live-term-title">Terms in context</span><form onSubmit={submitTerm}><label className="sr-only" htmlFor="term-query">Term to explain</label><input id="term-query" value={termQuery} onChange={(event) => setTermQuery(event.target.value)} placeholder="Type a term, e.g. ERP" /><button type="submit">Explain</button></form>{activeEntry ? <TermExplanation entry={activeEntry} dark onClose={() => setShowTermHelp(false)} /> : <p>Type a term for a quick explanation.</p>}</div>}<div className="live-actions"><button onClick={onAnother} type="button"><i>↻</i> Another question</button><button onClick={() => setShowTermHelp(!showTermHelp)} type="button"><i>?</i> Explain a term</button><button className={insightSaved ? "saved" : ""} onClick={() => setInsightSaved(!insightSaved)} type="button"><i>{insightSaved ? "✓" : "+"}</i> {insightSaved ? "Insight saved" : "Save this insight"}</button></div></div>}
+        {!answered ? <form className="live-form" onSubmit={submit}><h1>What did they<br />just say?</h1><div className="live-input"><textarea value={text} onChange={(event) => setText(event.target.value)} aria-label="What they just said" placeholder="Type a rough sentence…" autoFocus /><button className="voice-button" type="button" aria-label="Use voice input"><i /></button></div><button className="primary answer-button" type="submit">Help me respond <span>→</span></button><p className="live-hint">A rough sentence is enough.</p></form> : <div className="live-answer"><div className="meaning"><span>What that means</span><p>{response.meaning}</p></div>{detectedTerm && <div className="live-term-picks"><span>Term mentioned {detectedTerms.length > 1 && `· ${termIndex % detectedTerms.length + 1} of ${detectedTerms.length}`}</span><div><button onClick={() => { setRequestedTerm(detectedTerm.term); setShowTermHelp(true); }} type="button">{detectedTerm.term}</button>{detectedTerms.length > 1 && <button className="next-detected-term" onClick={() => { setTermIndex((current) => current + 1); setRequestedTerm(""); }} type="button">Next term →</button>}</div></div>}<div className="ask-next"><span>Ask next</span><blockquote>“{question}”</blockquote><div className="good-topic"><span>Good topic to explore</span><p>{response.topic}</p></div></div>{showTermHelp && <div className="live-term-panel"><span className="live-term-title">Terms in context</span><form onSubmit={submitTerm}><label className="sr-only" htmlFor="term-query">Term to explain</label><input id="term-query" value={termQuery} onChange={(event) => setTermQuery(event.target.value)} placeholder="Type a term, e.g. ERP" /><button type="submit">Explain</button></form>{activeEntry ? <TermExplanation key={activeEntry.term} entry={activeEntry} dark onClose={() => setShowTermHelp(false)} /> : <p>Type a term for a quick explanation.</p>}</div>}<div className="live-actions"><button onClick={onAnother} type="button"><i>↻</i> Another question</button><button onClick={() => setShowTermHelp(!showTermHelp)} type="button"><i>?</i> Explain a term</button><button className={insightSaved ? "saved" : ""} onClick={() => setInsightSaved(!insightSaved)} type="button"><i>{insightSaved ? "✓" : "+"}</i> {insightSaved ? "Insight saved" : "Save this insight"}</button></div></div>}
       </div>
     </section>
   );

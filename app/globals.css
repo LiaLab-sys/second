@@ -199,6 +199,10 @@ fieldset { margin: 0; padding: 22px 0 0; border: 0; }
 .term-explanation.dark header span, .term-explanation.dark header button, .term-explanation.dark dt { color: #ffe4d3; }
 .term-explanation.dark header h3, .term-explanation.dark dd { color: #fff9f1; }
 .term-explanation.dark dl > div { background: rgba(84,34,19,.18); }
+.term-question button { margin-top: 14px; border: 0; background: transparent; padding: 0; color: var(--accent); font-size: 11px; cursor: pointer; }
+.term-explanation.dark .term-question button { color: #fff2e7; }
+.no-terms { max-width: 560px; margin: 0; padding: 22px; border-radius: 14px; background: rgba(255,255,255,.06); color: #aaa297; }
+.next-detected-term { border-style: dashed !important; color: #aaa297 !important; }
 .inline-term { display: grid; grid-template-columns: 70px 1fr auto; gap: 15px; padding: 18px 0; align-items: center; color: #aaa297; font-size: 11px; }
 .inline-term b { color: #fff; font-family: Georgia, serif; font-size: 16px; }
 .inline-term button { border: 0; background: transparent; color: #aaa297; cursor: pointer; font-size: 10px; }

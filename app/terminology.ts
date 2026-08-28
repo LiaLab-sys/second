@@ -1,13 +1,18 @@
+import { businessTerminology } from "./business-terminology";
+
 export type TerminologyEntry = {
   term: string;
+  category?: string;
   aliases?: string[];
+  triggers?: string[];
   meaning: string;
   why: string;
   question: string;
+  moreQuestions?: string[];
   source: "local" | "mock-fallback";
 };
 
-export const terminologyGlossary: TerminologyEntry[] = [
+const technicalTerminology: TerminologyEntry[] = [
   {
     term: "API",
     meaning: "A defined way for two software systems to exchange information or ask each other to do something.",
@@ -101,12 +106,14 @@ export const terminologyGlossary: TerminologyEntry[] = [
   },
 ];
 
+export const terminologyGlossary: TerminologyEntry[] = [...technicalTerminology, ...businessTerminology];
+
 const normalise = (value: string) => value.trim().toLocaleLowerCase();
 
 export function findTerminologyEntry(value: string) {
   const query = normalise(value);
   return terminologyGlossary.find((entry) =>
-    [entry.term, ...(entry.aliases ?? [])].some((alias) => normalise(alias) === query),
+    [entry.term, ...(entry.aliases ?? []), ...(entry.triggers ?? [])].some((alias) => normalise(alias) === query),
   );
 }
 
@@ -115,7 +122,7 @@ export function findTermsInText(text: string) {
   if (!haystack) return [];
 
   return terminologyGlossary.filter((entry) =>
-    [entry.term, ...(entry.aliases ?? [])].some((alias) => {
+    [entry.term, ...(entry.aliases ?? []), ...(entry.triggers ?? [])].some((alias) => {
       const escaped = normalise(alias).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i").test(haystack);
     }),
@@ -129,11 +136,13 @@ export function explainTerm(value: string, context: string): TerminologyEntry {
   const term = value.trim() || "This term";
   return {
     term,
+    category: "General",
     meaning: `In this prototype, “${term}” is treated as specialist language that may need a quick plain-English explanation.`,
     why: context
       ? "It appeared in what the person just said, so understanding it may help you follow the practical point they are making."
       : "It may describe a product, process or technical detail that matters to this conversation.",
     question: `So what does ${term} change in practice?`,
+    moreQuestions: [`Who does ${term} affect most?`, `What would a good outcome for ${term} look like?`],
     source: "mock-fallback",
   };
 }
