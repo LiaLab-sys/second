@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import Image from "next/image";
 import { explainTerm, findTermsInText, type TerminologyEntry } from "./terminology";
 
 type Screen = "home" | "prep" | "live" | "wrap" | "memory" | "person";
@@ -54,6 +55,7 @@ const sampleProfile: ConversationProfile = {
 };
 
 const goals = ["Learn", "Network", "Find opportunities", "Career", "Partnership", "Potential client"];
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 const people = {
   alex: {
@@ -175,6 +177,18 @@ function Mark({ compact = false }: { compact?: boolean }) {
   return <span className={compact ? "mark compact" : "mark"} aria-hidden="true">S</span>;
 }
 
+function SiteLogo() {
+  return (
+    <span className="site-logo" aria-hidden="true">
+      <Image className="site-logo-mark" src={`${basePath}/second-mark-orange.png`} alt="" width={44} height={44} unoptimized />
+      <span className="site-logo-copy">
+        <span className="site-logo-wordmark">SECOND<span>.</span></span>
+        <span className="site-logo-tagline">Prep · Live · Memory</span>
+      </span>
+    </span>
+  );
+}
+
 function TermExplanation({ entry, onClose, dark = false }: { entry: TerminologyEntry; onClose?: () => void; dark?: boolean }) {
   return (
     <article className={`term-explanation ${dark ? "dark" : ""}`}>
@@ -278,7 +292,7 @@ export default function Home() {
   return (
     <main className={`site-shell screen-${screen}`}>
       <header className="topbar">
-        <button className="brand" onClick={goHome} type="button" aria-label="Second home"><Mark /> <span>Second</span></button>
+        <button className="brand" onClick={goHome} type="button" aria-label="Second home"><SiteLogo /></button>
         <nav aria-label="Primary navigation">
           <button className={`nav-link ${activeArea === "prep" ? "active" : ""}`} onClick={() => go(screen === "home" ? "home" : "prep")} type="button">Prep</button>
           <button className={`nav-link ${activeArea === "live" ? "active" : ""}`} onClick={() => go("live")} type="button">Live</button>
