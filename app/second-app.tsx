@@ -219,7 +219,7 @@ export default function Home() {
   const [wrapStructured, setWrapStructured] = useState(false);
   const [wrapNotes, setWrapNotes] = useState("");
   const [memorySaved, setMemorySaved] = useState(false);
-  const [memoryPeople, setMemoryPeople] = useState<MemoryPerson[]>([people.alex, people.sarah, people.daniel]);
+  const [memoryPeople, setMemoryPeople] = useState<MemoryPerson[]>([people.alex]);
   const [selectedPerson, setSelectedPerson] = useState<MemoryPerson>(people.alex);
 
   const activeArea = screen === "live" || screen === "wrap" ? "live" : screen === "memory" || screen === "person" ? "memory" : "prep";
